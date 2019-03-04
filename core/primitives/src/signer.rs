@@ -9,6 +9,7 @@ use crate::types;
 /// Trait to abstract the way transaction signing happens.
 pub trait TransactionSigner: Sync + Send {
     fn public_key(&self) -> PublicKey;
+    fn secret_key(&self) -> SecretKey;
     fn sign(&self, hash: &[u8]) -> Signature;
 }
 
@@ -192,6 +193,10 @@ impl TransactionSigner for InMemorySigner {
     #[inline]
     fn public_key(&self) -> PublicKey {
         self.public_key
+    }
+
+    fn secret_key(&self) -> SecretKey {
+        self.secret_key.clone()
     }
 
     fn sign(&self, data: &[u8]) -> signature::Signature {

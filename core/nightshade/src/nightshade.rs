@@ -2,6 +2,7 @@
 use std::cmp::{max, min, Ordering};
 use std::collections::HashSet;
 use std::sync::Arc;
+use log::info;
 
 use primitives::aggregate_signature::{
     AggregatePublicKey, BlsAggregateSignature, BlsPublicKey, BlsSignature,
@@ -356,6 +357,11 @@ impl Nightshade {
         if self.is_adversary[authority_id]
             || incompatible_states(&self.states[authority_id], &state)
         {
+            if self.is_adversary[authority_id] {
+                info!(target: "nightshade", "Not updating state, because authority_id={} is adversary", authority_id);
+            } else if incompatible_states(&self.states[authority_id], &state) {
+                info!(target: "nithgtshade", "Not updating state, because states are incompatible {:?} and {:?}", self.states[authority_id], state);
+            }
             self.is_adversary[authority_id] = true;
             return Err("Not processing adversaries updates".to_string());
         }

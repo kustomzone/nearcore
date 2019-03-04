@@ -136,6 +136,7 @@ pub fn generate_test_chain_spec(account_names: &Vec<String>, balance: u64) -> Ch
     let mut initial_authorities = vec![];
     for name in account_names {
         let signer = InMemorySigner::from_seed(name.as_str(), name.as_str());
+        println!("{} PK: {}, SK: {}", name, signer.public_key(), signer.secret_key);
         accounts.push((name.to_string(), signer.public_key().to_readable(), balance, 10));
         initial_authorities.push((
             name.to_string(),

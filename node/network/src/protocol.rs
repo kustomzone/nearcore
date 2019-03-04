@@ -7,7 +7,7 @@ use futures::sink::Sink;
 use futures::sync::mpsc::channel;
 use futures::sync::mpsc::Receiver;
 use futures::sync::mpsc::Sender;
-use log::{error, info, warn};
+use log::{error, info, warn, debug};
 
 use client::Client;
 use configs::NetworkConfig;
@@ -70,7 +70,16 @@ impl Protocol {
                         error!(target: "network", "{}", e);
                     }
                 }
-                Message::Gossip(gossip) => forward_msg(self.inc_gossip_tx.clone(), *gossip),
+                Message::Gossip(gossip) => {
+                    use nightshade::nightshade_task::GossipBody;
+                    let body = match &(&gossip).body {
+                        GossipBody::NightshadeStateUpdate(status) => format!("Status update {:?}", status),
+                        GossipBody::PayloadRequest(r) => format!("Payload request {:?}", r),
+                        GossipBody::PayloadReply(r) => format!("Payload reply {:?}", r),
+                    };
+                    debug!(target: "network", "Gossip received {}->{} [block_index={}] {}", gossip.sender_id, gossip.receiver_id, gossip.block_index, body);
+                    forward_msg(self.inc_gossip_tx.clone(), *gossip)
+                },
                 Message::BlockAnnounce(block) => {
                     forward_msg(self.inc_block_tx.clone(), *block);
                 }
@@ -188,6 +197,13 @@ impl Protocol {
 
     fn send_gossip(&self, g: Gossip) {
         if let Some(ch) = self.get_authority_channel(g.receiver_id) {
+            use nightshade::nightshade_task::GossipBody;
+            let body = match &g.body {
+                GossipBody::NightshadeStateUpdate(status) => format!("Status update {:?}", status),
+                GossipBody::PayloadRequest(r) => format!("Payload request {:?}", r),
+                GossipBody::PayloadReply(r) => format!("Payload reply {:?}", r),
+            };
+            debug!(target: "network", "Gossip sent {}->{} [block_index={}] {}", g.sender_id, g.receiver_id, g.block_index, body);
             let data = Encode::encode(&Message::Gossip(Box::new(g))).unwrap();
             forward_msg(ch, PeerMessage::Message(data));
         } else {

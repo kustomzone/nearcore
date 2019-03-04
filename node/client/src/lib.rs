@@ -83,6 +83,7 @@ fn configure_logging(log_level: log::LevelFilter) {
         "mempool",
         "nightshade",
     ];
+    let log_level = log::LevelFilter::Debug;
     let mut builder = Builder::from_default_env();
     internal_targets.iter().for_each(|internal_targets| {
         builder.filter(Some(internal_targets), log_level);
@@ -91,7 +92,7 @@ fn configure_logging(log_level: log::LevelFilter) {
     // Cranelift has too much log spam under INFO
     builder.filter(Some("cranelift_wasm"), log::LevelFilter::Warn);
 
-    let other_log_level = cmp::min(log_level, log::LevelFilter::Info);
+    let other_log_level = cmp::min(log_level, log::LevelFilter::Debug);
     builder.filter(None, other_log_level);
 
     if let Ok(lvl) = env::var("RUST_LOG") {
@@ -148,6 +149,15 @@ impl Client {
     pub fn new(config: &ClientConfig) -> Self {
         let mut key_file_path = config.base_path.to_path_buf();
         key_file_path.push(KEY_STORE_PATH);
+        println!("InMemorySigner account_id={}, key_file_path={:?}, PK={}",
+            config.account_id,
+               key_file_path.as_path(),
+            config.public_key.clone().unwrap(),
+        );
+        use std::io::prelude::*;
+        use std::io;
+        io::stdout().flush().ok().expect("Could not flush stdout");
+
         let signer = Arc::new(InMemorySigner::from_key_file(
             config.account_id.clone(),
             key_file_path.as_path(),

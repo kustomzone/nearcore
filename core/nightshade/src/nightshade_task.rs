@@ -56,7 +56,7 @@ pub struct Gossip {
     pub sender_id: AuthorityId,
     pub receiver_id: AuthorityId,
     pub body: GossipBody,
-    block_index: u64,
+    pub block_index: u64,
     signature: Signature,
 }
 
@@ -69,6 +69,12 @@ impl Gossip {
         block_index: u64,
     ) -> Self {
         let hash = hash_struct(&(sender_id, receiver_id, &body, block_index));
+
+        debug!(target: "nightshade", "Signing hash: {} with SK {} PK {}",
+            hash,
+            signer.secret_key(),
+            signer.public_key(),
+        );
 
         Self { sender_id, receiver_id, body, signature: signer.sign(hash.as_ref()), block_index }
     }
@@ -246,15 +252,18 @@ impl NightshadeTask {
                         warn!(target: "nightshade", "{}", e);
                     }
                 } else {
+                    info!(target: "nightshade", "Unconfirmed proposal {:?}", message);
                     // Wait for confirmation from mempool,
                     // request was already sent when the proposal arrived.
                 }
             } else {
+                info!(target: "nightshade", "Hashes not equal {:?}", message);
                 // There is at least one malicious actor between the sender of this message
                 // and the original author of the payload. But we can't determine which is the bad actor.
             }
         } else {
             // TODO: This message is discarded if we haven't received the proposal yet.
+            info!(target: "nightshade", "Message is discarded {:?}", message);
             let gossip = Gossip::new(
                 self.owner_id(),
                 author,
@@ -270,9 +279,13 @@ impl NightshadeTask {
         debug!(target: "nightshade", "Node: {} Processing gossip on block index {}", self.owner_id(), gossip.block_index);
 
         if Some(gossip.block_index) != self.block_index {
+            debug!(target: "nightshade", "Node: {} Unequal block index self.block_index={:?} gossip={:?}", self.owner_id(), self.block_index,
+                gossip
+            );
             return;
         }
         if !gossip.verify(&self.public_keys[gossip.sender_id]) {
+            debug!(target: "nightshade", "Node: {} Failed to verify gossip PK: {} gossip={:?}", self.owner_id(), self.public_keys[gossip.sender_id], gossip );
             return;
         }
 
